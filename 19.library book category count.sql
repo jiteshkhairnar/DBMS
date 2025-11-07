@@ -29,4 +29,3 @@ db.books.mapReduce(
 // Display results
 print("Books count per category:");
 db.category_count.find().forEach(printjson);
-

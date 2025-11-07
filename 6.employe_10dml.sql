@@ -1,87 +1,78 @@
-CREATE DATABASE StudentDB;
-USE StudentDB;
+CREATE DATABASE EmployeeDB;
+USE EmployeeDB;
 
--- Student Table
-CREATE TABLE STUDENT (
-  stud_id INT AUTO_INCREMENT PRIMARY KEY,
+-- Department Table
+CREATE TABLE DEPARTMENT (
+  dept_id INT AUTO_INCREMENT PRIMARY KEY,
+  dept_name VARCHAR(50)
+);
+
+-- Employee Table
+CREATE TABLE EMPLOYEE (
+  emp_id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50),
-  dept VARCHAR(30)
+  dept_id INT,
+  status VARCHAR(10) DEFAULT 'Active',
+  FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id)
 );
 
--- Subject Table
-CREATE TABLE SUBJECT (
-  sub_id INT AUTO_INCREMENT PRIMARY KEY,
-  sub_name VARCHAR(50)
-);
-
--- Result Table
-CREATE TABLE RESULT (
-  stud_id INT,
-  sub_id INT,
-  marks INT,
-  PRIMARY KEY (stud_id, sub_id),
-  FOREIGN KEY (stud_id) REFERENCES STUDENT(stud_id),
-  FOREIGN KEY (sub_id) REFERENCES SUBJECT(sub_id)
+-- Payroll Table (with ON DELETE CASCADE)
+CREATE TABLE PAYROLL (
+  emp_id INT,
+  salary DECIMAL(10,2),
+  PRIMARY KEY (emp_id),
+  FOREIGN KEY (emp_id) REFERENCES EMPLOYEE(emp_id) ON DELETE CASCADE
 );
 
 -- 1. Insert sample data
-INSERT INTO STUDENT (name, dept) VALUES
-('Amit', 'Computer'),
-('Sneha', 'IT'),
-('Raj', 'Computer');
+INSERT INTO DEPARTMENT (dept_name) VALUES ('IT'), ('HR'), ('Accounts');
 
-INSERT INTO SUBJECT (sub_name) VALUES ('DBMS'), ('OS'), ('CN');
+INSERT INTO EMPLOYEE (name, dept_id) VALUES
+('Amit', 1), ('Sneha', 2), ('Raj', 1), ('Tina', 3);
 
-INSERT INTO RESULT VALUES
-(1, 1, 85), (1, 2, 78), (1, 3, 90),
-(2, 1, 40), (2, 2, 35), (2, 3, 42),
-(3, 1, 90), (3, 2, 88), (3, 3, 92);
+INSERT INTO PAYROLL VALUES
+(1, 50000), (2, 40000), (3, 60000), (4, 45000);
 
--- 2. Display total and average marks of each student
-SELECT s.name, SUM(r.marks) AS Total, AVG(r.marks) AS Average
-FROM STUDENT s JOIN RESULT r ON s.stud_id = r.stud_id
-GROUP BY s.name;
+-- 2. Employees with salary above 45000
+SELECT e.name, p.salary
+FROM EMPLOYEE e JOIN PAYROLL p ON e.emp_id = p.emp_id
+WHERE p.salary > 45000;
 
--- 3. Show students who failed any subject (marks < 40)
-SELECT DISTINCT s.name
-FROM STUDENT s JOIN RESULT r ON s.stud_id = r.stud_id
-WHERE r.marks < 40;
+-- 3. Update salary (10% increment)
+UPDATE PAYROLL SET salary = salary * 1.10;
 
--- 4. Update marks for revaluation
-UPDATE RESULT SET marks = marks + 5 WHERE marks BETWEEN 35 AND 39;
+-- 4. Delete record of resigned employee (Raj)
+DELETE FROM EMPLOYEE WHERE name = 'Raj';
 
--- 5. Delete records of graduated students (example: dept='IT')
-DELETE FROM STUDENT WHERE dept = 'IT';
+-- 5. Total salary paid per department
+SELECT d.dept_name, SUM(p.salary) AS Total_Salary
+FROM DEPARTMENT d
+JOIN EMPLOYEE e ON d.dept_id = e.dept_id
+JOIN PAYROLL p ON e.emp_id = p.emp_id
+GROUP BY d.dept_name;
 
--- 6. List toppers of each subject
-SELECT sub_name, s.name, r.marks
-FROM RESULT r
-JOIN STUDENT s ON r.stud_id = s.stud_id
-JOIN SUBJECT sb ON r.sub_id = sb.sub_id
-WHERE r.marks = (
-  SELECT MAX(marks) FROM RESULT WHERE sub_id = sb.sub_id
-);
+-- 6. Employees working in IT department
+SELECT e.name
+FROM EMPLOYEE e JOIN DEPARTMENT d ON e.dept_id = d.dept_id
+WHERE d.dept_name = 'IT';
 
--- 7. Students with total marks above 80%
-SELECT s.name, SUM(r.marks) AS Total
-FROM STUDENT s JOIN RESULT r ON s.stud_id = r.stud_id
-GROUP BY s.name
-HAVING (SUM(r.marks) / (COUNT(r.sub_id)*100))*100 > 80;
+-- 7. Department with maximum employees
+SELECT d.dept_name, COUNT(e.emp_id) AS Total
+FROM DEPARTMENT d
+JOIN EMPLOYEE e ON d.dept_id = e.dept_id
+GROUP BY d.dept_name
+ORDER BY Total DESC
+LIMIT 1;
 
--- 8. Number of students per department
-SELECT dept, COUNT(*) AS No_of_Students
-FROM STUDENT
-GROUP BY dept;
+-- 8. Highest and lowest paid employee
+SELECT e.name, p.salary
+FROM EMPLOYEE e JOIN PAYROLL p ON e.emp_id = p.emp_id
+WHERE p.salary = (SELECT MAX(salary) FROM PAYROLL)
+   OR p.salary = (SELECT MIN(salary) FROM PAYROLL);
 
--- 9. Students sorted by total marks
-SELECT s.name, SUM(r.marks) AS Total
-FROM STUDENT s JOIN RESULT r ON s.stud_id = r.stud_id
-GROUP BY s.name
-ORDER BY Total DESC;
-
--- 10. Students who passed all subjects (marks >= 40 in all)
-SELECT s.name
-FROM STUDENT s
-WHERE s.stud_id NOT IN (
-  SELECT stud_id FROM RESULT WHERE marks < 40
-);
+-- 9. Average salary per department
+SELECT d.dept_name, AVG(p.salary) AS Avg_Salary
+FROM DEPARTMENT d
+JOIN EMPLOYEE e ON d.dept_id = e.dept_id
+JOIN PAYROLL p ON e.emp_id = p.emp_id
+GROUP BY d.dept_name;
